@@ -1,0 +1,83 @@
+#!/bin/sh
+set -e -u
+
+# This tool creates a root filesystem image for the Nexus 7 2013
+
+die () {
+	echo "$@" >&2
+	exit 1
+}
+
+USAGE="${0##./}"' [-C] [-c config] [package]
+  Options:
+    -C          print default config template to stdout and exit
+    -c config   use file <config> as alternate config template
+
+  Environment:
+    The command line takes precedence over the environment.
+    MKOS_CONFIG  - multistrap configuration
+    MKOS_PACKAGE - root package
+'
+
+DEFAULT_CONFIG=/usr/share/mkos-n7/default-n7-2013.mstrap
+DEFAULT_PACKAGE=device-n7-2013
+
+while [ "$#" != 0 ]
+do
+	case "$1,${2-}" in
+		-C,*)
+			cat $DEFAULT_CONFIG
+			exit
+			;;
+		-c,?*)
+			TEMPLATE="$2"
+			shift
+			shift
+			;;
+		-*)
+			die "$USAGE"
+			;;
+		*)
+			test -n "${PACKAGE:-}" && die "$USAGE"
+			PACKAGE="$1"
+			shift
+			;;
+	esac
+done
+
+: ${TEMPLATE:=${MKOS_CONFIG-$DEFAULT_CONFIG}}
+: ${PACKAGE:=${MKOS_PACKAGE-$DEFAULT_PACKAGE}}
+test $(whoami) = "root" || die "error: must be root or preferably fakeroot"
+test -r "$TEMPLATE" || die "error: file $TEMPLATE is unreadable"
+IMAGE=ptux.img
+test ! -e "$IMAGE" || die "error: refusing to overwrite $IMAGE"
+TARBALL=ptux.tgz
+test ! -e "$TARBALL" || die "error: refusing to overwrite $TARBALL"
+BOOTIMG=boot.img
+test ! -e "$BOOTIMG" || die "error: refusing to overwrite $BOOTIMG"
+BUILD=ptux.rootfs
+IMAGESIZE=$(expr 1024 \* 1024 \* 1024)
+CONFIG=$(mktemp --tmpdir mkos-n7-XXXXXXXXXX.mstrap)
+
+trap "rm -rf $CONFIG $BUILD $BOOTIMG $IMAGE $TARBALL; exit" INT TERM EXIT
+
+sed -e "s/{{.*package.*}}/$PACKAGE/" $TEMPLATE >$CONFIG
+/usr/sbin/multistrap -f $CONFIG -d $BUILD
+rm $CONFIG
+
+# Android's make_ext4fs (below) is braindead and cannot deal with device nodes.
+# We delete them here, but have a package in the filesystem that's smart enough
+# to recreate them.
+#
+rm -r $BUILD/dev
+
+# Remove $BOOTIMG from the multistrapped filesystem so that we can flash it as
+# a seperate image. It is Remove it so that we can flash it with external
+# tools.
+#
+test -r $BUILD/boot/$BOOTIMG && mv $BUILD/boot/$BOOTIMG .
+
+make_ext4fs -s -l $IMAGESIZE $IMAGE $BUILD
+tar czf $TARBALL $BUILD
+rm -r $BUILD
+trap - INT TERM EXIT

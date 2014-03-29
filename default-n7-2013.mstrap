@@ -1,0 +1,24 @@
+[general]
+arch=armhf
+noauth=true
+unpack=true
+cleanup=true
+omitrequired=true
+markauto=true
+bootstrap=ptux emdebian debian
+aptsources=
+aptpreferences=/usr/share/mkos-n7/preferences
+
+[ptux]
+source=http://packages.pragmatux.org/device
+suite=3.0
+components=main
+packages={{package}}
+
+[emdebian]
+source=http://emdebian.org/grip
+suite=wheezy-grip
+
+[debian]
+source=http://cdn.debian.net/debian
+suite=wheezy

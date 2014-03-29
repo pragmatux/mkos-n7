@@ -10,5 +10,10 @@ Vcs-Browser: http://git.pragmatux.org/mkos-n7.git
 Package: mkos-n7
 Architecture: all
 Depends: multistrap, android-system-extras-tools, ${misc:Depends}
-Description: Make filesystem images for n7
+Description: Make filesystem images for Nexus 7
  Builds filesystem images for the Nexus 7 using multistrap.
+ .
+   mkos-n7:      2012 model
+   mkos-n7-2013: 2013 model
+ .
+ This package is part of Pragmatux (http://pragmatux.org).
